@@ -1,6 +1,7 @@
 // products array
-const inventory = [
+const defaultInventory = [
     {
+        id: 1,
         name: "Lumber",
         cost: 10,
         price: 20,
@@ -8,6 +9,7 @@ const inventory = [
         minStock: 10
     },
     {
+        id: 2,
         name: "Plywood",
         cost: 20,
         price: 30,
@@ -15,6 +17,7 @@ const inventory = [
         minStock: 15
     },
     {
+        id: 3,
         name: "Hand-tools",
         cost: 20,
         price: 35,
@@ -22,6 +25,7 @@ const inventory = [
         minStock: 15
     },
     {
+        id: 4,
         name: "Power-tools",
         cost: 40,
         price: 60,
@@ -29,6 +33,7 @@ const inventory = [
         minStock: 10
     },
     {
+        id: 5,
         name: "Screws, Nails, & Fasteners",
         cost: 14,
         price: 20,
@@ -36,6 +41,7 @@ const inventory = [
         minStock: 25
     },
     {
+        id: 6,
         name: "Paint",
         cost: 15,
         price: 27,
@@ -43,6 +49,7 @@ const inventory = [
         minStock: 10
     },
     {
+        id: 7,
         name: "Plumbing/Electrical Supplies",
         cost: 35,
         price: 42,
@@ -50,6 +57,7 @@ const inventory = [
         minStock: 20
     },
     {
+        id: 8,
         name: "Boots/Gloves",
         cost: 60,
         price: 80,
@@ -57,6 +65,7 @@ const inventory = [
         minStock: 5
     },
     {
+        id: 9,
         name: "Safety Equipment",
         cost: 80,
         price: 100,
@@ -65,15 +74,39 @@ const inventory = [
     }
 ];
 
+// saving data
+const savedInventory = localStorage.getItem("inventory");
 
+let inventory;
+
+if (savedInventory !== null) {
+    inventory = JSON.parse(savedInventory);
+} else {
+    inventory = defaultInventory;
+}
+
+function saveInventory() {
+    localStorage.setItem("inventory", JSON.stringify(inventory));
+
+}
 // product-list display using for...of & DOM manipulation
 const productList = document.querySelector(".product-list");
 
-function displayInventory() {
+function displayInventory(products) {
     productList.innerHTML = "";
 
-    for (const product of inventory) {
+    for (const product of products) {
         const productCard = document.createElement("div");
+
+        const editButton = document.createElement("button");
+        editButton.textContent = "Edit Product";
+        editButton.dataset.id = product.id;
+        editButton.classList.add("edit-button");
+
+        const deleteButton = document.createElement("button");
+        deleteButton.textContent = "Remove Product";
+        deleteButton.dataset.id = product.id;
+        deleteButton.classList.add("delete-button");
 
         const productName = document.createElement("h3");
         productName.textContent = `Product: ${product.name}`;
@@ -90,12 +123,56 @@ function displayInventory() {
         const minStock = document.createElement("p");
         minStock.textContent = `Minimum Stock: ${product.minStock}`;
 
-        productCard.append(productName, cost, price, stock, minStock);
+        productCard.append(productName, cost, price, stock, minStock, editButton, deleteButton);
         productList.append(productCard);
     }   
 }
 
-displayInventory(); 
+displayInventory(inventory); 
+
+
+// delete button and edit button 
+productList.addEventListener("click", function(event) {
+ if (event.target.matches(".delete-button")) {
+    const productId = event.target.dataset.id;
+    const index = inventory.findIndex(product => product.id == productId);
+
+    if (index !== -1) {
+        inventory.splice(index, 1);
+
+        saveInventory();
+
+        displayInventory();
+        calculateTotalInventory();
+        calculatePotentialSales();
+        findLowStockItems();
+    }
+}
+
+   else if(event.target.matches(".edit-button")) {
+        const productId = event.target.dataset.id;
+        const product = inventory.find(product => product.id == productId);
+
+        const newName = prompt("Enter the new product name", product.name);
+        const newCost = Number(prompt("Enter the product's updated cost", product.cost));
+        const newPrice = Number(prompt("Enter the product's updated price", product.price));
+        const newStock = Number(prompt("Enter the product's updated stock quantity", product.stock));
+        const newMinStock = Number(prompt("Enter the product's updated minimum stock", product.minStock));
+
+        product.name = newName;
+        product.cost = newCost;
+        product.price = newPrice;
+        product.stock = newStock;
+        product.minStock = newMinStock;
+
+        saveInventory();
+
+        displayInventory(inventory);
+        calculateTotalInventory();
+        calculatePotentialSales();
+        findLowStockItems();
+    }
+});
 
 
 // calculating total inventory cost
@@ -177,7 +254,29 @@ addProductForm.addEventListener("submit", function(event) {
     const stock = Number(productStock.value);
     const minStock = Number(minimumStock.value);
 
+    if (name === "") {
+        alert("Please enter a product name.");
+        return;
+    }
+    if (cost < 0) {
+        alert("Cannot enter a negative amount");
+        return;
+    }
+    if (price <= 0) {
+        alert("Selling price must be greater than zero");
+        return;
+    }
+    if (stock < 0 || !Number.isInteger(stock)) {
+        alert("Stock must be a nonnegative whole number.");
+        return
+    }
+    if (minStock < 0 || !Number.isInteger(minStock)) {
+        alert("Minimum stock must be a nonnegative whole number");
+        return;
+    }
+
     const newProduct = {
+        id: crypto.randomUUID(),
         name: name,
         cost: cost,
         price: price,
@@ -187,10 +286,24 @@ addProductForm.addEventListener("submit", function(event) {
 
     inventory.push(newProduct);
 
-    displayInventory();
+    saveInventory();
+
+    displayInventory(inventory);
     calculateTotalInventory();
     calculatePotentialSales();
     findLowStockItems();
 
     addProductForm.reset();
 });
+
+
+//search products
+const searchInput = document.querySelector("#search-products");
+
+searchInput.addEventListener('input', function(event) {
+    const searchValue = searchInput.value;
+    const filteredInventory = inventory.filter(product => 
+        product.name.toLowerCase().includes(searchValue.toLowerCase())
+    );
+    displayInventory(filteredInventory);
+})
